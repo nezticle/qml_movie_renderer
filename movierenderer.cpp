@@ -68,6 +68,7 @@ MovieRenderer::MovieRenderer(QObject *parent)
     , m_rootItem(nullptr)
     , m_fbo(nullptr)
     , m_animationDriver(nullptr)
+    , m_status(NotRunning)
 {
     QSurfaceFormat format;
     // Qt Quick may need a depth and stencil buffer. Always make sure these are available.
@@ -95,22 +96,22 @@ MovieRenderer::MovieRenderer(QObject *parent)
 
 void MovieRenderer::renderMovie(const QString &qmlFile, const QSize &size, qreal devicePixelRatio, int durationMs, int fps)
 {
+    if (m_status != NotRunning)
+        return;
+
     m_size = size;
     m_dpr = devicePixelRatio;
-
-    createFbo();
+    m_progress = 0;
+    m_duration = durationMs;
+    m_fps = fps;
+    emit progressChanged(m_progress);
 
     if (!loadQML(qmlFile, size))
         return;
 
-    if (!m_context->makeCurrent(m_offscreenSurface))
-        return;
+    start();
 
-    // Render each frame of movie
-    int frames = durationMs / 1000 * fps;
-    m_animationDriver = new AnimationDriver(1000 / fps);
-    m_animationDriver->install();
-    for (int i = 0; i < frames; ++i) {
+    for (int i = 0; i < m_frames; ++i) {
 
         // Polish, synchronize and render the next frame (into our fbo).
         m_renderControl->polishItems();
@@ -122,14 +123,12 @@ void MovieRenderer::renderMovie(const QString &qmlFile, const QSize &size, qreal
         m_fbo->toImage().save(QString(QString::number(i) + ".jpg"));
 
         //advance animation
+        m_progress = i / (float)m_frames * 100;
+        emit progressChanged(m_progress);
         QCoreApplication::processEvents();
         m_animationDriver->advance();
     }
-    m_animationDriver->uninstall();
-    delete m_animationDriver;
-    m_animationDriver = nullptr;
 
-    destroyFbo();
 }
 
 MovieRenderer::~MovieRenderer()
@@ -146,6 +145,38 @@ MovieRenderer::~MovieRenderer()
     delete m_offscreenSurface;
     delete m_context;
     delete m_animationDriver;
+}
+
+int MovieRenderer::progress() const
+{
+    return m_progress;
+}
+
+void MovieRenderer::start()
+{
+    m_status = Running;
+    createFbo();
+
+    if (!m_context->makeCurrent(m_offscreenSurface))
+        return;
+
+    // Render each frame of movie
+    m_frames = m_duration / 1000 * m_fps;
+    m_animationDriver = new AnimationDriver(1000 / m_fps);
+    m_animationDriver->install();
+    m_currentFrame = 0;
+
+    // Start the renderer
+}
+
+void MovieRenderer::cleanup()
+{
+    m_animationDriver->uninstall();
+    delete m_animationDriver;
+    m_animationDriver = nullptr;
+
+    destroyFbo();
+    m_status = NotRunning;
 }
 
 void MovieRenderer::createFbo()
@@ -197,4 +228,9 @@ bool MovieRenderer::loadQML(const QString &qmlFile, const QSize &size)
     m_quickWindow->setGeometry(0, 0, size.width(), size.height());
 
     return true;
+}
+
+void MovieRenderer::renderNext()
+{
+
 }

@@ -37,18 +37,21 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
-#include <QtGui/QGuiApplication>
+#include <QtWidgets/QApplication>
 
-#include "movierenderer.h"
+#include "movierendererwindow.h"
 
 int main(int argc, char *argv[])
 {
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
 
-    QScopedPointer<MovieRenderer> movieRenderer;
-    movieRenderer.reset(new MovieRenderer);
+    MovieRendererWindow window;
+    window.show();
 
-    movieRenderer->renderMovie("qrc:/main.qml", QSize(1280,720), 1.0, 12000, 60);
+//    QScopedPointer<MovieRenderer> movieRenderer;
+//    movieRenderer.reset(new MovieRenderer);
 
-    return 0;
+//    movieRenderer->renderMovie("qrc:/main.qml", QSize(1280,720), 1.0, 12000, 60);
+
+    return app.exec();
 }

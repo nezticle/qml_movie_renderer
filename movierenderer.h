@@ -55,17 +55,33 @@ class AnimationDriver;
 class MovieRenderer : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(int progress READ progress NOTIFY progressChanged)
 public:
+    enum Status {
+        NotRunning,
+        Running
+    };
+
     explicit MovieRenderer(QObject *parent = 0);
 
     void renderMovie(const QString &qmlFile, const QSize &size, qreal devicePixelRatio = 1.0, int durationMs = 1000, int fps = 24);
 
     ~MovieRenderer();
 
+    int progress() const;
+
+signals:
+    void progressChanged(int progress);
+
 private slots:
+    void start();
+    void cleanup();
+
     void createFbo();
     void destroyFbo();
     bool loadQML(const QString &qmlFile, const QSize &size);
+
+    void renderNext();
 
 private:
     QOpenGLContext *m_context;
@@ -79,6 +95,14 @@ private:
     qreal m_dpr;
     QSize m_size;
     AnimationDriver *m_animationDriver;
+
+    int m_progress;
+    Status m_status;
+    int m_duration;
+    int m_fps;
+    int m_frames;
+    int m_currentFrame;
+
 };
 
 #endif // MOVIERENDERER_H
