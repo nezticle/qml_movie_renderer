@@ -54,6 +54,9 @@
 #include <QQuickWindow>
 #include <QQuickRenderControl>
 #include <QCoreApplication>
+#include <QEvent>
+
+#include <QtConcurrent>
 
 #include "animationdriver.h"
 
@@ -94,41 +97,25 @@ MovieRenderer::MovieRenderer(QObject *parent)
     m_renderControl->initialize(m_context);
 }
 
-void MovieRenderer::renderMovie(const QString &qmlFile, const QSize &size, qreal devicePixelRatio, int durationMs, int fps)
+void MovieRenderer::renderMovie(const QString &qmlFile, const QString &filename, const QString &outputDirectory, const QString &outputFormat, const QSize &size, qreal devicePixelRatio, int durationMs, int fps)
 {
     if (m_status != NotRunning)
         return;
 
     m_size = size;
     m_dpr = devicePixelRatio;
-    m_progress = 0;
+    setProgress(0);
+    setFileProgress(0);
     m_duration = durationMs;
     m_fps = fps;
-    emit progressChanged(m_progress);
+    m_outputName = filename;
+    m_outputDirectory = outputDirectory;
+    m_outputFormat = outputFormat;
 
     if (!loadQML(qmlFile, size))
         return;
 
     start();
-
-    for (int i = 0; i < m_frames; ++i) {
-
-        // Polish, synchronize and render the next frame (into our fbo).
-        m_renderControl->polishItems();
-        m_renderControl->sync();
-        m_renderControl->render();
-
-        m_context->functions()->glFlush();
-
-        m_fbo->toImage().save(QString(QString::number(i) + ".jpg"));
-
-        //advance animation
-        m_progress = i / (float)m_frames * 100;
-        emit progressChanged(m_progress);
-        QCoreApplication::processEvents();
-        m_animationDriver->advance();
-    }
-
 }
 
 MovieRenderer::~MovieRenderer()
@@ -165,8 +152,10 @@ void MovieRenderer::start()
     m_animationDriver = new AnimationDriver(1000 / m_fps);
     m_animationDriver->install();
     m_currentFrame = 0;
+    m_futureCounter = 0;
 
     // Start the renderer
+    renderNext();
 }
 
 void MovieRenderer::cleanup()
@@ -176,6 +165,8 @@ void MovieRenderer::cleanup()
     m_animationDriver = nullptr;
 
     destroyFbo();
+    qDeleteAll(m_futures);
+    m_futures.clear();
     m_status = NotRunning;
 }
 
@@ -230,7 +221,87 @@ bool MovieRenderer::loadQML(const QString &qmlFile, const QSize &size)
     return true;
 }
 
+void static saveImage(const QImage &image, const QString &outputFile)
+{
+    image.save(outputFile);
+}
+
 void MovieRenderer::renderNext()
 {
 
+    // Polish, synchronize and render the next frame (into our fbo).
+    m_renderControl->polishItems();
+    m_renderControl->sync();
+    m_renderControl->render();
+
+    m_context->functions()->glFlush();
+
+    m_currentFrame++;
+
+    QString outputFile(m_outputDirectory + QDir::separator() + m_outputName + "_" + QString::number(m_currentFrame) + "." + m_outputFormat);
+
+    QFutureWatcher<void> *watcher = new QFutureWatcher<void>();
+    connect(watcher, SIGNAL(finished()), this, SLOT(futureFinished()));
+    watcher->setFuture(QtConcurrent::run(saveImage, m_fbo->toImage(), outputFile));
+    m_futures.append(watcher);
+
+    //advance animation
+    setProgress(m_currentFrame / (float)m_frames * 100);
+    m_animationDriver->advance();
+
+    if (m_currentFrame < m_frames) {
+        //Schedule the next update
+        QEvent *updateRequest = new QEvent(QEvent::UpdateRequest);
+        QCoreApplication::postEvent(this, updateRequest);
+    } else {
+        //Finished
+        cleanup();
+    }
+
+}
+
+void MovieRenderer::setProgress(int progress)
+{
+    if (m_progress == progress)
+        return;
+    m_progress = progress;
+    emit progressChanged(progress);
+}
+
+void MovieRenderer::futureFinished()
+{
+    m_futureCounter++;
+    setFileProgress(m_futureCounter / (float)m_frames * 100);
+    if (m_futureCounter == (m_frames - 1))
+        emit finished();
+}
+
+
+bool MovieRenderer::event(QEvent *event)
+{
+    if (event->type() == QEvent::UpdateRequest) {
+        renderNext();
+        return true;
+    }
+
+    return QObject::event(event);
+}
+
+bool MovieRenderer::isRunning()
+{
+    return m_status == Running;
+}
+
+int MovieRenderer::fileProgress() const
+{
+    return m_fileProgress;
+}
+
+void MovieRenderer::setFileProgress(int fileProgress)
+{
+    if (m_fileProgress == fileProgress)
+        return;
+
+    m_fileProgress = fileProgress;
+    emit fileProgressChanged(fileProgress);
 }

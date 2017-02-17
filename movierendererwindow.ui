@@ -193,12 +193,16 @@
        <item>
         <widget class="QLabel" name="label_7">
          <property name="text">
-          <string>Output Filenames</string>
+          <string>Output Filename</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="outputFilenameLineEdit"/>
+        <widget class="QLineEdit" name="outputFilenameLineEdit">
+         <property name="text">
+          <string>output</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>

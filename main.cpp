@@ -48,10 +48,5 @@ int main(int argc, char *argv[])
     MovieRendererWindow window;
     window.show();
 
-//    QScopedPointer<MovieRenderer> movieRenderer;
-//    movieRenderer.reset(new MovieRenderer);
-
-//    movieRenderer->renderMovie("qrc:/main.qml", QSize(1280,720), 1.0, 12000, 60);
-
     return app.exec();
 }

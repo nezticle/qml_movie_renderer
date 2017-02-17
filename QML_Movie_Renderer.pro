@@ -1,4 +1,4 @@
-QT += quick qml widgets
+QT += quick qml widgets concurrent
 
 SOURCES += \
     main.cpp \

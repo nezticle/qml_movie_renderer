@@ -2,6 +2,7 @@
 #define MOVIERENDERERWINDOW_H
 
 #include <QMainWindow>
+#include <QProgressBar>
 #include "movierenderer.h"
 
 
@@ -22,9 +23,12 @@ private slots:
     void getOutputDirectory();
     void checkEnableRender();
     void renderMovie();
+    void handleMovieFinished();
 
 private:
     Ui::MovieRendererWindow *ui;
+    QProgressBar *m_progressBar;
+    QProgressBar *m_fileProgressBar;
     MovieRenderer *m_movieRenderer;
 };
 

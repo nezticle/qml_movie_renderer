@@ -42,6 +42,9 @@
 
 #include <QObject>
 #include <QSize>
+#include <QString>
+#include <QDir>
+#include <QFuture>
 
 class QOpenGLContext;
 class QOpenGLFramebufferObject;
@@ -56,6 +59,7 @@ class MovieRenderer : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(int progress READ progress NOTIFY progressChanged)
+    Q_PROPERTY(int fileProgress READ fileProgress NOTIFY fileProgressChanged)
 public:
     enum Status {
         NotRunning,
@@ -64,14 +68,25 @@ public:
 
     explicit MovieRenderer(QObject *parent = 0);
 
-    void renderMovie(const QString &qmlFile, const QSize &size, qreal devicePixelRatio = 1.0, int durationMs = 1000, int fps = 24);
+    void renderMovie(const QString &qmlFile, const QString &filename, const QString &outputDirectory, const QString &outputFormat, const QSize &size, qreal devicePixelRatio = 1.0, int durationMs = 1000, int fps = 24);
 
     ~MovieRenderer();
 
     int progress() const;
 
+    bool event(QEvent *event) override;
+    bool isRunning();
+
+    int fileProgress() const;
+
+public slots:
+    void setFileProgress(int fileProgress);
+
 signals:
     void progressChanged(int progress);
+    void finished();
+
+    void fileProgressChanged(int fileProgress);
 
 private slots:
     void start();
@@ -82,6 +97,10 @@ private slots:
     bool loadQML(const QString &qmlFile, const QSize &size);
 
     void renderNext();
+
+    void setProgress(int progress);
+    void futureFinished();
+
 
 private:
     QOpenGLContext *m_context;
@@ -102,6 +121,13 @@ private:
     int m_fps;
     int m_frames;
     int m_currentFrame;
+    QString m_outputName;
+    QString m_outputFormat;
+    QString m_outputDirectory;
+
+    QVector<QFutureWatcher<void> *> m_futures;
+    int m_futureCounter;
+    int m_fileProgress;
 
 };
 

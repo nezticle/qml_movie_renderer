@@ -16,6 +16,24 @@ MovieRendererWindow::MovieRendererWindow(QWidget *parent)
     connect(ui->outputDirectoryLineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(checkEnableRender()));
     connect(ui->qmlFileLineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(checkEnableRender()));
     connect(ui->renderMovieButton, SIGNAL(clicked()), this, SLOT(renderMovie()));
+    connect(m_movieRenderer, SIGNAL(finished()), this, SLOT(handleMovieFinished()));
+
+    //Statusbars
+    m_progressBar = new QProgressBar;
+    m_progressBar->setValue(0);
+    m_progressBar->setMinimum(0);
+    m_progressBar->setMaximum(100);
+    ui->statusbar->addWidget(m_progressBar);
+    m_progressBar->setVisible(false);
+    connect(m_movieRenderer, SIGNAL(progressChanged(int)), m_progressBar, SLOT(setValue(int)));
+
+    m_fileProgressBar = new QProgressBar;
+    m_fileProgressBar->setValue(0);
+    m_fileProgressBar->setMinimum(0);
+    m_fileProgressBar->setMaximum(100);
+    ui->statusbar->addWidget(m_fileProgressBar);
+    m_fileProgressBar->setVisible(false);
+    connect(m_movieRenderer, SIGNAL(fileProgressChanged(int)), m_fileProgressBar, SLOT(setValue(int)));
 
     // Populate Output Format
     for (QByteArray format : QImageWriter::supportedImageFormats()) {
@@ -46,7 +64,9 @@ void MovieRendererWindow::getOutputDirectory()
 
 void MovieRendererWindow::checkEnableRender()
 {
-    if (!ui->qmlFileLineEdit->text().isEmpty() && !ui->outputDirectoryLineEdit->text().isEmpty()) {
+    if (!ui->qmlFileLineEdit->text().isEmpty() &&
+        !ui->outputDirectoryLineEdit->text().isEmpty() &&
+        !m_movieRenderer->isRunning()) {
         if (QFile::exists(ui->qmlFileLineEdit->text())) {
             ui->renderMovieButton->setEnabled(true);
             return;
@@ -58,5 +78,26 @@ void MovieRendererWindow::checkEnableRender()
 
 void MovieRendererWindow::renderMovie()
 {
+    //Star Render
+    m_movieRenderer->renderMovie(ui->qmlFileLineEdit->text(), ui->outputFilenameLineEdit->text(),
+                                 ui->outputDirectoryLineEdit->text(), ui->imageFormatComboBox->currentText(),
+                                 QSize(ui->widthSpinBox->value(), ui->heightSpinBox->value()), 1.0,
+                                 ui->durationSpinBox->value() * 1000, ui->fpsSpinBox->value());
 
+    //Disable button
+    checkEnableRender();
+
+    //Show progress bar
+    m_progressBar->setVisible(true);
+    m_fileProgressBar->setVisible(true);
+}
+
+void MovieRendererWindow::handleMovieFinished()
+{
+    //Enable Button
+    checkEnableRender();
+
+    //Hide progress bar
+    m_progressBar->setVisible(false);
+    m_fileProgressBar->setVisible(false);
 }
