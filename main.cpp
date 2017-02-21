@@ -44,6 +44,10 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    app.setApplicationName("QML Movie Renderer");
+    app.setApplicationVersion("1.0");
+    app.setOrganizationDomain("qad.io");
+    app.setOrganizationName("Bsquask");
 
     MovieRendererWindow window;
     window.show();

@@ -1,6 +1,11 @@
 #include "movierendererwindow.h"
+#include "movierenderer.h"
 #include "ui_movierendererwindow.h"
+
+#include <QProgressBar>
+#include <QSettings>
 #include <QFileDialog>
+#include <QCloseEvent>
 
 #include <QImageWriter>
 
@@ -18,30 +23,34 @@ MovieRendererWindow::MovieRendererWindow(QWidget *parent)
     connect(ui->renderMovieButton, SIGNAL(clicked()), this, SLOT(renderMovie()));
     connect(m_movieRenderer, SIGNAL(finished()), this, SLOT(handleMovieFinished()));
 
-    //Statusbars
-    m_progressBar = new QProgressBar;
+    // Statusbar
+    m_progressLabel = new QLabel(this);
+    m_progressLabel->setText("Render Progress");
+    ui->statusbar->addWidget(m_progressLabel);
+    m_progressBar = new QProgressBar(this);
     m_progressBar->setValue(0);
     m_progressBar->setMinimum(0);
     m_progressBar->setMaximum(100);
     ui->statusbar->addWidget(m_progressBar);
-    m_progressBar->setVisible(false);
     connect(m_movieRenderer, SIGNAL(progressChanged(int)), m_progressBar, SLOT(setValue(int)));
 
-    m_fileProgressBar = new QProgressBar;
+    m_fileProgressLabel = new QLabel(this);
+    m_fileProgressLabel->setText("Write Progress");
+    ui->statusbar->addWidget(m_fileProgressLabel);
+    m_fileProgressBar = new QProgressBar(this);
     m_fileProgressBar->setValue(0);
     m_fileProgressBar->setMinimum(0);
     m_fileProgressBar->setMaximum(100);
     ui->statusbar->addWidget(m_fileProgressBar);
-    m_fileProgressBar->setVisible(false);
     connect(m_movieRenderer, SIGNAL(fileProgressChanged(int)), m_fileProgressBar, SLOT(setValue(int)));
+    setProgressBarsVisible(false);
 
     // Populate Output Format
     for (QByteArray format : QImageWriter::supportedImageFormats()) {
         ui->imageFormatComboBox->addItem(QString::fromLocal8Bit(format));
     }
     // Set Defaults
-    ui->imageFormatComboBox->setCurrentIndex(ui->imageFormatComboBox->findText("jpg"));
-    ui->outputDirectoryLineEdit->setText(QDir::currentPath());
+    readSettings();
 }
 
 MovieRendererWindow::~MovieRendererWindow()
@@ -88,8 +97,7 @@ void MovieRendererWindow::renderMovie()
     checkEnableRender();
 
     //Show progress bar
-    m_progressBar->setVisible(true);
-    m_fileProgressBar->setVisible(true);
+    setProgressBarsVisible(true);
 }
 
 void MovieRendererWindow::handleMovieFinished()
@@ -98,6 +106,45 @@ void MovieRendererWindow::handleMovieFinished()
     checkEnableRender();
 
     //Hide progress bar
-    m_progressBar->setVisible(false);
-    m_fileProgressBar->setVisible(false);
+    setProgressBarsVisible(false);
+}
+
+void MovieRendererWindow::setProgressBarsVisible(bool isVisible)
+{
+    m_progressBar->setVisible(isVisible);
+    m_progressLabel->setVisible(isVisible);
+    m_fileProgressBar->setVisible(isVisible);
+    m_fileProgressLabel->setVisible(isVisible);
+}
+
+void MovieRendererWindow::readSettings()
+{
+    ui->qmlFileLineEdit->setText(m_settings.value("qmlFile").toString());
+    ui->widthSpinBox->setValue(m_settings.value("outputWidth", 1280).toInt());
+    ui->heightSpinBox->setValue(m_settings.value("outputHeight", 720).toInt());
+    ui->durationSpinBox->setValue(m_settings.value("duration", 2.0).toDouble());
+    ui->fpsSpinBox->setValue(m_settings.value("fps", 24).toInt());
+    ui->outputDirectoryLineEdit->setText(m_settings.value("outputDir", QDir::currentPath()).toString());
+    ui->outputFilenameLineEdit->setText(m_settings.value("outputFilename", "output").toString());
+    QString format = m_settings.value("format", "jpg").toString();
+    ui->imageFormatComboBox->setCurrentIndex(ui->imageFormatComboBox->findText(format));
+}
+
+void MovieRendererWindow::writeSettings()
+{
+    m_settings.setValue("qmlFile", ui->qmlFileLineEdit->text());
+    m_settings.setValue("outputWidth", ui->widthSpinBox->value());
+    m_settings.setValue("outputHeight", ui->heightSpinBox->value());
+    m_settings.setValue("duration", ui->durationSpinBox->value());
+    m_settings.setValue("fps", ui->fpsSpinBox->value());
+    m_settings.setValue("outputDir", ui->outputDirectoryLineEdit->text());
+    m_settings.setValue("outputFilename", ui->outputFilenameLineEdit->text());
+    m_settings.setValue("format", ui->imageFormatComboBox->currentText());
+}
+
+
+void MovieRendererWindow::closeEvent(QCloseEvent *event)
+{
+    writeSettings();
+    event->accept();
 }

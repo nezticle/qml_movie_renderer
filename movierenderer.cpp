@@ -165,9 +165,6 @@ void MovieRenderer::cleanup()
     m_animationDriver = nullptr;
 
     destroyFbo();
-    qDeleteAll(m_futures);
-    m_futures.clear();
-    m_status = NotRunning;
 }
 
 void MovieRenderer::createFbo()
@@ -272,8 +269,12 @@ void MovieRenderer::futureFinished()
 {
     m_futureCounter++;
     setFileProgress(m_futureCounter / (float)m_frames * 100);
-    if (m_futureCounter == (m_frames - 1))
+    if (m_futureCounter == (m_frames - 1)) {
+        qDeleteAll(m_futures);
+        m_futures.clear();
+        m_status = NotRunning;
         emit finished();
+    }
 }
 
 
