@@ -11,8 +11,5 @@ HEADERS += \
     animationdriver.h \
     movierendererwindow.h
 
-RESOURCES += \
-    qml.qrc
-
 FORMS += \
     movierendererwindow.ui

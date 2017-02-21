@@ -37,6 +37,7 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
+
 #include <QtWidgets/QApplication>
 
 #include "movierendererwindow.h"
