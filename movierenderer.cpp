@@ -160,6 +160,9 @@ void MovieRenderer::start()
 
 void MovieRenderer::cleanup()
 {
+    delete m_rootItem;
+    m_rootItem = nullptr;
+
     m_animationDriver->uninstall();
     delete m_animationDriver;
     m_animationDriver = nullptr;
@@ -181,6 +184,9 @@ void MovieRenderer::destroyFbo()
 
 bool MovieRenderer::loadQML(const QString &qmlFile, const QSize &size)
 {
+    delete m_rootItem;
+    m_rootItem = nullptr;
+
     if (m_qmlComponent != nullptr)
         delete m_qmlComponent;
     m_qmlComponent = new QQmlComponent(m_qmlEngine, QUrl(qmlFile), QQmlComponent::PreferSynchronous);
